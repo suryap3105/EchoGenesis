@@ -293,7 +293,7 @@ If you use EchoGenesis in your research, please cite:
 
 ```bibtex
 @software{echogenesis2025,
-  author = {Peddireddy, Surya},
+  author = {Surya},
   title = {EchoGenesis: Quantum Emotional AI},
   year = {2025},
   url = {https://github.com/suryap3105/EchoGenesis}
