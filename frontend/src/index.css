@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-echo-dark: #050505;
+  --color-echo-light: #e0e0e0;
+  --color-echo-accent: #00f0ff;
+  --font-sans: 'Inter', sans-serif;
+}
+
+body {
+  background-color: var(--color-echo-dark);
+  color: var(--color-echo-light);
+  margin: 0;
+  overflow: hidden;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}

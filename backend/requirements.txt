@@ -1,0 +1,30 @@
+# Core Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+
+# LLM Integration
+ollama>=0.1.6
+
+# Memory & Retrieval
+faiss-cpu>=1.7.4
+networkx>=3.2.0
+sentence-transformers>=2.2.0
+
+# ColBERT Re-ranking (optional - install separately if needed)
+ragatouille>=0.0.8
+
+# Graph Partitioning (optional - install separately if needed)
+# metis>=0.2a5
+
+# Scientific Computing
+numpy>=1.24.0,<2.0.0
+scipy>=1.11.0
+scikit-learn>=1.3.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0

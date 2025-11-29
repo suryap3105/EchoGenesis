@@ -1,0 +1,16 @@
+{
+  "needs": {
+    "comfort": 50,
+    "connection": 50,
+    "stimulation": 50
+  },
+  "personality": {
+    "trust": 0.5,
+    "curiosity": 0.5,
+    "anxiety": 0.1
+  },
+  "attachment": 0.1,
+  "growth_stage": 0,
+  "emotional_state": "calm",
+  "interaction_count": 3
+}

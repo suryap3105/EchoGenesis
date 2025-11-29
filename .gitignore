@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+ENV/
+.env
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Project-specific data
+echogenesis_data.json
+memory_data/
+*.db
+*.sqlite
+
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# Rust
+target/debug/
+target/release/
+target/wheels/*.whl
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db

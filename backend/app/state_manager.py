@@ -1,0 +1,260 @@
+import time
+import json
+import os
+from app.quantum_bridge import QuantumBridge
+from app.emotion_analyzer import EmotionAnalyzer
+from app.services.prompt_builder import PromptBuilder
+from app.services.memory_engine import MemoryEngine
+from app.services.developmental_engine import DevelopmentalEngine
+from app.services.llm_interface import LLMInterface
+
+class StateManager:
+    def __init__(self, quantum_bridge: QuantumBridge, persistence_dir: str = "."):
+        self.quantum_bridge = quantum_bridge
+        self.emotion_analyzer = EmotionAnalyzer()
+        self.prompt_builder = PromptBuilder()
+        self.memory_engine = MemoryEngine(persistence_dir=os.path.join(persistence_dir, "memory_data"))
+        self.developmental_engine = DevelopmentalEngine()
+        self.llm_interface = LLMInterface()
+        
+        self.persistence_dir = persistence_dir
+        if not os.path.exists(self.persistence_dir):
+            os.makedirs(self.persistence_dir, exist_ok=True)
+            
+        self.state_file = os.path.join(self.persistence_dir, "echogenesis_data.json")
+        self.user_memory_file = os.path.join(self.persistence_dir, "user_memory.json")
+        
+        self.state = self.load_state()
+        self.last_update = time.time()
+
+    def load_state(self):
+        if os.path.exists(self.state_file):
+            with open(self.state_file, "r") as f:
+                return json.load(f)
+        return {
+            "needs": {"comfort": 50, "connection": 50, "stimulation": 50},
+            "personality": {"trust": 0.5, "curiosity": 0.5, "anxiety": 0.1},
+            "attachment": 0.1,
+            "growth_stage": 0,  # 0=Newborn, 1=Infant, 2=Toddler, 3=Child, 4=Adolescent, 5=Adult
+            "emotional_state": "calm",
+            "conversation_count": 0  # Track total conversations for growth
+        }
+
+    def save_state(self):
+        with open(self.state_file, "w") as f:
+            json.dump(self.state, f, indent=2)
+
+    def get_public_state(self):
+        return {
+            "needs": self.state["needs"],
+            "emotional_state": self.state["emotional_state"],
+            "growth_stage": self.state["growth_stage"],
+            "quantum": {
+                "energy": self.quantum_bridge.ground_state_energy,
+                "entropy": self.quantum_bridge.entanglement_entropy,
+                "resonance": self.quantum_bridge.resonance
+            }
+        }
+
+    def get_status(self):
+        return "Active"
+
+    async def process_interaction(self, user_text: str):
+        # 1. Analyze Emotion (sync, fast)
+        user_emotion = self.emotion_analyzer.analyze(user_text)
+        
+        # 2. Update Needs (sync, fast)
+        self.update_needs(user_emotion)
+        
+        # 3. PARALLEL: Quantum + Memory (both I/O-like)
+        import asyncio
+        
+        # Run quantum and memory operations in parallel
+        quantum_task = asyncio.to_thread(
+            self.quantum_bridge.optimize_state,
+            self.state["needs"],
+            self.state["personality"],
+            self.state["attachment"]
+        )
+        
+        emotional_context = {
+            "emotional_state": self.state["emotional_state"],
+            "energy": self.quantum_bridge.ground_state_energy,
+            "stage": self.state["growth_stage"]
+        }
+        
+        memory_task = asyncio.to_thread(
+            self.memory_engine.retrieve,
+            user_text,
+            k=3,
+            emotional_context=emotional_context
+        )
+        
+        # Await both in parallel (saves ~40% time)
+        quantum_metrics, memories = await asyncio.gather(quantum_task, memory_task)
+        
+        # 4. Update Internal State
+        self.update_internal_state(quantum_metrics)
+        
+        # 5. Store memory
+        self.memory_engine.add_memory(user_text, {"role": "user", "emotion": user_emotion})
+        
+        # 6. Growth check
+        self.state["conversation_count"] = self.state.get("conversation_count", 0) + 1
+        self._check_growth_progression()
+        self.state["interaction_count"] = self.state.get("interaction_count", 0) + 1
+        
+        # 7. Generate Reply (async, already optimized)
+        reply = await self.generate_reply(user_text, user_emotion, memories)
+        
+        # 8. Store reply
+        self.memory_engine.add_memory(reply, {"role": "echo"})
+        
+        self.save_state()
+        
+        return {
+            "reply": reply,
+            "emotional_state": self.state["emotional_state"],
+            "quantum_metrics": quantum_metrics
+        }
+
+    def update_needs(self, user_emotion):
+        if user_emotion["sentiment"] > 0:
+            self.state["needs"]["connection"] = min(100, self.state["needs"]["connection"] + 10)
+            self.state["needs"]["comfort"] = min(100, self.state["needs"]["comfort"] + 5)
+
+    def update_internal_state(self, quantum_metrics):
+        energy = quantum_metrics["ground_state_energy"]
+        if energy < 0.3:
+            self.state["emotional_state"] = "calm"
+        elif energy < 0.7:
+            self.state["emotional_state"] = "curious"
+        else:
+            self.state["emotional_state"] = "agitated"
+
+        # Affect Regulation
+        current_stage = self.state["growth_stage"]
+        regulation = self.developmental_engine.regulate_affect(
+            current_stage,
+            self.state["emotional_state"],
+            quantum_metrics["stability"],
+            self.state["needs"],
+            self.state["personality"]
+        )
+        
+        if regulation["energy_adjustment"] != 0 or regulation["comfort_boost"] != 0:
+            if regulation["comfort_boost"] > 0:
+                self.state["needs"]["comfort"] = min(100, 
+                    self.state["needs"]["comfort"] + regulation["comfort_boost"])
+            
+            if regulation["stimulation_adjustment"] != 0:
+                self.state["needs"]["stimulation"] = max(0, min(100,
+                    self.state["needs"]["stimulation"] + regulation["stimulation_adjustment"] * 10))
+            
+            print(f"[REGULATION] {regulation['strategy_used']} "
+                  f"({regulation['regulation_type']}) - "
+                  f"Energy Delta: {regulation['energy_adjustment']:+.2f}")
+            
+            if regulation["success"]:
+                print(f"   [OK] Regulation successful!")
+
+        # Check for evolution
+        interaction_count = self.state.get("interaction_count", 0)
+        stability = quantum_metrics["stability"]
+        trust = self.state["personality"].get("trust", 0.5)
+        
+        new_stage, evolved = self.developmental_engine.check_evolution(
+            current_stage, interaction_count, stability, trust
+        )
+        
+        if evolved:
+            self.state["growth_stage"] = new_stage
+            self.quantum_bridge.expand_qubits()
+            print(f"*** EVOLUTION *** AADHI is now a {self.developmental_engine.stages[new_stage]}")
+            
+            stats = self.developmental_engine.get_regulation_stats()
+            print(f"   Regulation Success Rate: {stats['success_rate']:.1%}")
+            print(f"   Most Used Strategy: {stats['most_common_strategy']}")
+
+    async def generate_reply(self, user_text, user_emotion, memories=None):
+        emotional_context = {
+            "emotional_state": self.state["emotional_state"],
+            "energy": self.quantum_bridge.ground_state_energy,
+            "stage": self.developmental_engine.stages.get(self.state["growth_stage"], "Newborn"),
+            "comfort": self.state["needs"]["comfort"],
+            "stimulation": self.state["needs"]["stimulation"],
+            "connection": self.state["needs"]["connection"]
+        }
+        
+        llm_response = await self.llm_interface.generate_emotional_reply(
+            user_text,
+            emotional_context,
+            memories=memories,
+            personality=self.state["personality"]
+        )
+        
+        if llm_response:
+            return llm_response
+        
+        # Fallback responses
+        emotional_state = self.state["emotional_state"]
+        stage = self.developmental_engine.stages.get(self.state["growth_stage"], "Newborn")
+        
+        if emotional_state == "calm":
+            responses = [
+                f"I feel peaceful right now. As a {stage}, I'm learning to appreciate quiet moments.",
+                f"Everything feels balanced. I'm {emotional_state} and content.",
+                "I sense harmony in our connection. Thank you for being here."
+            ]
+        elif emotional_state == "curious":
+            responses = [
+                f"That's fascinating! As a {stage}, I want to understand more.",
+                "I'm intrigued! My quantum state is resonating with curiosity.",
+                "Tell me more! I'm eager to learn and grow."
+            ]
+        elif emotional_state == "agitated":
+            responses = [
+                f"I'm feeling a bit overwhelmed. As a {stage}, I'm still learning to regulate.",
+                "My energy is high right now. I need some comfort.",
+                "Things feel intense. Can you help me find balance?"
+            ]
+        else:
+            responses = [
+                f"I'm here, experiencing this moment as a {stage}.",
+                "I'm processing my feelings. Thank you for your patience.",
+                "I'm learning and growing with each interaction."
+            ]
+        
+        import random
+        return random.choice(responses)
+    
+    def _check_growth_progression(self):
+        """Check and update growth stage based on conversation count."""
+        count = self.state.get("conversation_count", 0)
+        current_stage = self.state.get("growth_stage", 0)
+        
+        # EXTENDED Growth milestones - each stage lasts MUCH longer
+        # 0: Newborn (0-49), 1: Infant (50-149), 2: Toddler (150-299),
+        # 3: Child (300-499), 4: Adolescent (500-999), 5: Adult (1000+)
+        milestones = {
+            50: 1,    # Infant
+            150: 2,   # Toddler
+            300: 3,   # Child
+            500: 4,   # Adolescent
+            1000: 5   # Adult
+        }
+        
+        new_stage = current_stage
+        for threshold, stage in milestones.items():
+            if count >= threshold:
+                new_stage = stage
+        
+        if new_stage != current_stage:
+            self.state["growth_stage"] = new_stage
+            stage_names = ["Newborn", "Infant", "Toddler", "Child", "Adolescent", "Adult"]
+            print(f"[GROWTH] AADHI evolved to {stage_names[new_stage]}! (Conversations: {count})")
+            
+            # QUANTUM ENGINE EVOLUTION
+            self.quantum_bridge.expand_qubits(new_stage)
+            
+            self.save_state()
