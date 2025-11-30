@@ -294,10 +294,18 @@ class MemoryEngine:
         if os.path.exists(docs_file):
             with open(docs_file, "r") as f:
                 data = json.load(f)
-                self.documents = data.get("documents", [])
-                self.clusters = {int(k): v for k, v in data.get("clusters", {}).items()}
-                self.doc_to_cluster = {int(k): v for k, v in data.get("doc_to_cluster", {}).items()}
-                self.hrm.importance_scores = {int(k): v for k, v in data.get("hrm_importance", {}).items()}
+                
+                if isinstance(data, list):
+                    # Legacy format support
+                    self.documents = data
+                    self.clusters = {}
+                    self.doc_to_cluster = {}
+                    self.hrm.importance_scores = {}
+                else:
+                    self.documents = data.get("documents", [])
+                    self.clusters = {int(k): v for k, v in data.get("clusters", {}).items()}
+                    self.doc_to_cluster = {int(k): v for k, v in data.get("doc_to_cluster", {}).items()}
+                    self.hrm.importance_scores = {int(k): v for k, v in data.get("hrm_importance", {}).items()}
         
         faiss_file = os.path.join(self.persistence_dir, "faiss.index")
         if self.use_faiss and os.path.exists(faiss_file):

@@ -1,18 +1,20 @@
-# Quantum Emotional Engine ⚛️
+# Quantum Emotional Engine ⚛️ 🧠
 
-Rust implementation of the quantum emotional state simulator for EchoGenesis.
+Rust implementation of the **Biomimetic Quantum-Inspired Emotional Simulator** for EchoGenesis.
 
 ## Overview
 
-This module implements a high-performance quantum statevector simulator optimized for emotional state modeling. It uses PyO3 to provide Python bindings, allowing seamless integration with the FastAPI backend.
+This module implements a high-performance quantum statevector simulator designed to model **neuro-affective dynamics**. It is a **computational simulation** inspired by Quantum Cognition theory (Pothos, Busemeyer) and biological neural architecture, not a claim of quantum biological processes in the human brain.
+
+It maps quantum circuit topology to specific brain regions (Amygdala, PFC) to simulate the non-linear, interference-prone nature of human emotion.
 
 ## Features
 
-- **Statevector Simulation** - Full quantum state representation (4-8 qubits)
-- **Quantum Gates** - H, X, RX, RY, RZ with arbitrary parameters
-- **Hamiltonian Evolution** - Trotterized time evolution for emotional dynamics
-- **Entanglement Metrics** - Von Neumann entropy calculation
-- **FFT Spectrogram** - Resonance vector generation via Fast Fourier Transform
+- **Biomimetic Topology** - Qubits mapped to specific brain regions (Amygdala, PFC, Hippocampus)
+- **Top-Down Regulation** - PFC qubits control Amygdala qubits via Entanglement (CNOT/CRZ)
+- **Homeostatic Stability** - Damping mechanisms to prevent "emotional runaway" (State Explosion)
+- **Synaptic Plasticity Stub** - Parameter adaptation interface for future reinforcement learning
+- **Lobotomy Mode** - Ablation switch for comparing Quantum vs. Classical baselines
 - **PyO3 Bindings** - Native Python integration
 
 ## Building
@@ -135,18 +137,35 @@ Gates are applied via tensor product expansion:
 U_total = I ⊗ ... ⊗ U_target ⊗ ... ⊗ I
 ```
 
+## Neuro-Quantum Topology
+
+The circuit architecture mimics the **limbic-cortical loops** of the human brain:
+
+### Qubit Mapping
+| Qubit ID | Brain Region | Function | Quantum Role |
+|----------|--------------|----------|--------------|
+| 0 | **Amygdala (Basolateral)** | Valence (Good/Bad) | Target for sensory input (RX/RY) |
+| 1 | **Amygdala (Central)** | Arousal (Intensity) | Coupled to Q0 via CNOT |
+| 2 | **Prefrontal Cortex (vmPFC)** | Regulation/Inhibition | Control qubit for Amygdala (CRZ) |
+| 3 | **Hippocampus** | Context/Memory | Entanglement hub for history |
+
+### Dynamics
+1.  **Bottom-Up Arousal**: Sensory inputs rotate Amygdala qubits (0, 1).
+2.  **Top-Down Control**: PFC qubits (2, 3) apply controlled-rotations (CRZ) to dampen or amplify Amygdala states.
+3.  **Homeostasis**: Global non-unitary evolution (damping) pulls the system back to a ground state to simulate metabolic limits.
+
 ## Emotional Hamiltonian
 
-The system evolves under:
+The system evolves under a Hamiltonian inspired by these interactions:
 
 ```
-H(t) = H_longitudinal + H_transverse + H_coupling
+H(t) = H_limbic + H_cortical + H_regulation
 ```
 
 Where:
-- **H_longitudinal** = Σ ω_j Z_j (comfort/stability)
-- **H_transverse** = Σ Ω_j X_j (stimulation/excitement)
-- **H_coupling** = Σ J_ij Z_i Z_j (connection/entanglement)
+- **H_limbic** = Σ ω_j σ_j (Raw emotional reactivity)
+- **H_cortical** = Σ Ω_j σ_j (Cognitive state)
+- **H_regulation** = Σ J_ij σ_i σ_j (PFC inhibiting Amygdala)
 
 ## Performance
 

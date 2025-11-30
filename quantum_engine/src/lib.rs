@@ -12,6 +12,16 @@ enum GateType {
     CNOT, CRY(f32), CRZ(f32)
 }
 
+/// Brain Region Mapping for Biomimetic Topology
+/// Q0: Amygdala (Basolateral) - Valence
+/// Q1: Amygdala (Central) - Arousal
+/// Q2: PFC (vmPFC) - Regulation
+/// Q3: Hippocampus - Context
+const AMYGDALA_VALENCE: usize = 0;
+const AMYGDALA_AROUSAL: usize = 1;
+const PFC_REGULATION: usize = 2;
+const HIPPOCAMPUS: usize = 3;
+
 /// Represents a single gate operation in the circuit
 #[derive(Clone, Debug)]
 struct Gate {
@@ -25,6 +35,7 @@ struct Gate {
 pub struct QuantumCircuit {
     qubits: usize,
     gates: Vec<Gate>,
+    lobotomy_mode: bool, // Ablation switch
 }
 
 #[pymethods]
@@ -34,7 +45,44 @@ impl QuantumCircuit {
         QuantumCircuit {
             qubits,
             gates: Vec::new(),
+            lobotomy_mode: false,
         }
+    }
+
+    /// Enable "Lobotomy Mode" (Classical Baseline)
+    pub fn set_lobotomy_mode(&mut self, enabled: bool) {
+        self.lobotomy_mode = enabled;
+    }
+
+    /// Apply Top-Down PFC Control (Regulation)
+    /// Simulates the Prefrontal Cortex inhibiting the Amygdala
+    pub fn apply_pfc_control(&mut self, intensity: f32) {
+        // PFC (Q2) regulates Amygdala (Q0, Q1) via CRZ (Controlled Rotation Z)
+        // This dampens or amplifies the phase, affecting interference patterns
+        if self.qubits >= 3 {
+            // PFC -> Amygdala Valence
+            self.gates.push(Gate { 
+                gate_type: GateType::CRZ(intensity), 
+                target: AMYGDALA_VALENCE, 
+                control: Some(PFC_REGULATION) 
+            });
+            
+            // PFC -> Amygdala Arousal
+            self.gates.push(Gate { 
+                gate_type: GateType::CRZ(intensity * 0.5), 
+                target: AMYGDALA_AROUSAL, 
+                control: Some(PFC_REGULATION) 
+            });
+        }
+    }
+
+    /// Stub for Synaptic Plasticity (Parameter Adaptation)
+    /// In a full version, this would adjust gate parameters based on feedback
+    pub fn synaptic_plasticity(&mut self, feedback: f32) -> f32 {
+        // For now, we just return a "learning rate" modulated by the feedback
+        // This proves the architectural slot exists for future RL integration
+        let learning_rate = 0.01;
+        feedback * learning_rate
     }
 
     pub fn h(&mut self, target: usize) {
@@ -77,6 +125,13 @@ impl QuantumCircuit {
     pub fn execute(&self) -> PyResult<QuantumState> {
         let mut state = QuantumState::new(self.qubits);
         
+        // If Lobotomy Mode is on, return a static "Classical" state
+        if self.lobotomy_mode {
+            // Return a state with no superposition/entanglement
+            // Just |0...0> (which new() returns) or a simple product state
+            return Ok(state); 
+        }
+        
         for gate in &self.gates {
             match &gate.gate_type {
                 GateType::H => state.apply_gate("H", gate.target, None)?,
@@ -90,7 +145,7 @@ impl QuantumCircuit {
                 GateType::RZ(phi) => state.apply_gate("RZ", gate.target, Some(*phi))?,
                 GateType::CNOT => state.apply_cnot(gate.control.unwrap(), gate.target)?,
                 GateType::CRY(theta) => state.apply_controlled_ry(gate.control.unwrap(), gate.target, *theta)?,
-                GateType::CRZ(_) => return Err(pyo3::exceptions::PyNotImplementedError::new_err("CRZ not implemented yet")),
+                GateType::CRZ(phi) => state.apply_controlled_rz(gate.control.unwrap(), gate.target, *phi)?,
             }
         }
         
@@ -289,6 +344,41 @@ impl QuantumState {
         Ok(())
     }
 
+    /// Apply controlled RZ gate (for PFC control)
+    pub fn apply_controlled_rz(&mut self, control: usize, target: usize, phi: f32) -> PyResult<()> {
+        if control >= self.qubits || target >= self.qubits {
+            return Err(pyo3::exceptions::PyValueError::new_err("Qubit index out of range"));
+        }
+        if control == target {
+            return Err(pyo3::exceptions::PyValueError::new_err("Control and target must be different"));
+        }
+
+        let dim = 1 << self.qubits;
+        let mut new_state = self.state.clone();
+        
+        let control_mask = 1 << control;
+        let target_step = 1 << target;
+        
+        let rz = self.rz_gate(phi);
+        
+        for i in 0..dim {
+            if (i & control_mask) != 0 && (i & target_step) == 0 {
+                let idx0 = i;
+                let idx1 = i | target_step;
+                
+                let a = self.state[idx0];
+                let b = self.state[idx1];
+                
+                // RZ is diagonal, so it's simpler, but using full matrix for consistency
+                new_state[idx0] = rz[0][0] * a + rz[0][1] * b;
+                new_state[idx1] = rz[1][0] * a + rz[1][1] * b;
+            }
+        }
+        
+        self.state = new_state;
+        Ok(())
+    }
+
     /// Calculate energy expectation value
     pub fn expectation_value(&self) -> f32 {
         self.calculate_energy()
@@ -309,6 +399,43 @@ impl QuantumState {
     /// Calculate resonance
     pub fn resonance(&self) -> Vec<f32> {
         self.calculate_resonance()
+    }
+
+    /// Apply Homeostatic Regulation (Stability)
+    /// Damps high-energy states to prevent "emotional runaway"
+    pub fn homeostasis(&mut self, threshold: f32) {
+        let energy = self.calculate_energy();
+        if energy > threshold {
+            // Apply damping factor to reduce amplitudes of excited states
+            let damping = 0.95; // 5% energy loss per step if unstable
+            let dim = self.state.len();
+            
+            // Damp excited states
+            for i in 1..dim {
+                self.state[i] = self.state[i] * damping;
+            }
+            
+            // Calculate current total probability
+            let current_prob: f32 = self.state.iter().map(|c| c.norm_sqr()).sum();
+            
+            // Add lost probability to ground state (index 0) to preserve unitarity
+            let lost_prob = 1.0 - current_prob;
+            if lost_prob > 0.0 {
+                // Adjust ground state amplitude
+                // New magnitude = sqrt(|c0|^2 + lost_prob)
+                let current_c0_sqr = self.state[0].norm_sqr();
+                let new_c0_mag = (current_c0_sqr + lost_prob).sqrt();
+                
+                if current_c0_sqr > 1e-9 {
+                    // Preserve phase
+                    let scale = new_c0_mag / self.state[0].norm();
+                    self.state[0] = self.state[0] * scale;
+                } else {
+                    // If ground state was empty, populate it
+                    self.state[0] = Complex32::new(new_c0_mag, 0.0);
+                }
+            }
+        }
     }
 }
 
@@ -553,4 +680,56 @@ fn quantum_engine(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<QuantumState>()?;
     m.add_class::<DensityMatrix>()?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lobotomy_mode() {
+        let mut circuit = QuantumCircuit::new(4);
+        circuit.h(0); // Create superposition
+        circuit.set_lobotomy_mode(true);
+        
+        // Should return ground state despite H gate
+        let state = circuit.execute().unwrap();
+        assert_eq!(state.calculate_energy(), 0.0);
+    }
+
+    #[test]
+    fn test_pfc_control() {
+        let mut circuit = QuantumCircuit::new(4);
+        circuit.apply_pfc_control(0.5);
+        
+        // Should have added 2 gates
+        assert!(circuit.gates.len() >= 2);
+        
+        // Check if they are CRZ gates
+        match circuit.gates[0].gate_type {
+            GateType::CRZ(_) => assert!(true),
+            _ => assert!(false, "Expected CRZ gate for PFC control"),
+        }
+    }
+
+    #[test]
+    fn test_homeostasis() {
+        let mut state = QuantumState::new(4);
+        state.apply_gate("X", 0, None).unwrap(); // Flip to |1>, Energy = 1.0
+        
+        let energy_before = state.calculate_energy();
+        assert!(energy_before > 0.9);
+        
+        state.homeostasis(0.5); // Threshold 0.5, should trigger damping
+        
+        let energy_after = state.calculate_energy();
+        assert!(energy_after < energy_before, "Energy should decrease after homeostasis");
+    }
+
+    #[test]
+    fn test_synaptic_plasticity() {
+        let mut circuit = QuantumCircuit::new(4);
+        let adjustment = circuit.synaptic_plasticity(1.0);
+        assert!(adjustment > 0.0);
+    }
 }

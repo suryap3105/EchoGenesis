@@ -7,6 +7,8 @@ class LLMInterface:
     def __init__(self):
         self.provider = os.getenv("LLM_PROVIDER", "ollama")
         self.model = os.getenv("OLLAMA_MODEL", "llama3.1")
+        self.model = os.getenv("OLLAMA_MODEL", "llama3.1")
+        self.use_quantum_engine = os.getenv("USE_QUANTUM_ENGINE", "true").lower() == "true"
         self.conversation_history = []
         self.max_history = 10
         
@@ -117,6 +119,14 @@ JSON only:
         stimulation = emotional_context.get('stimulation', 50)
         connection = emotional_context.get('connection', 50)
         
+        # QUANTUM COHERENCE CHECK (PFC Control Loop)
+        coherence = emotional_context.get('coherence', 1.0)
+        stability_instruction = ""
+        if coherence < 0.3:
+            stability_instruction = "\n⚠️ SYSTEM ALERT: Your emotional state is unstable (Low Coherence). You feel confused and overwhelmed. Express this instability."
+        elif coherence > 0.8:
+            stability_instruction = "\n✅ SYSTEM STATE: You are highly coherent and focused."
+
         # EVOLUTIONARY STAGE DEFINITIONS - STRICT CONSTRAINTS
         stage_characteristics = {
             0: {  # Newborn (0-10 conversations)
@@ -183,6 +193,8 @@ SPEAK EXACTLY like this stage would:
 - How much you trust (0-1): {trust:.2f}
 - How curious you are (0-1): {curiosity:.2f}  
 - How anxious you feel (0-1): {anxiety:.2f}
+- How anxious you feel (0-1): {anxiety:.2f}
+{stability_instruction}
 {memory_context}
 
 💬 WHAT THEY SAID: "{user_text}"
